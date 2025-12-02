@@ -1,0 +1,65 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION = "us-east-1"
+        AWS_CREDS = credentials('Jenklins-Training-account')
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                git branch: 'main', url: 'https://gitlab.presidio.com/yjs/cicd-training.git'
+            }
+        }
+
+        stage('Terraform Init') {
+            steps {
+                sh '''
+                terraform init
+                '''
+            }
+        }
+
+        stage('Terraform Plan') {
+            steps {
+                sh '''
+                terraform plan \
+                    -var="region=${AWS_REGION}" \
+                    -var="bucket_name=shamlin-bucket-${BUILD_NUMBER}"
+                '''
+            }
+        }
+
+        stage('Approval') {
+            when {
+                branch "main"
+            }
+            steps {
+                script {
+                    input message: "Approve Terraform Apply?"
+                }
+            }
+        }
+
+        stage('Terraform Apply') {
+            when {
+                branch "main"
+            }
+            steps {
+                sh '''
+                terraform apply -auto-approve \
+                    -var="region=${AWS_REGION}" \
+                    -var="bucket_name=shamlin-bucket-${BUILD_NUMBER}"
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Pipeline completed."
+        }
+    }
+}
