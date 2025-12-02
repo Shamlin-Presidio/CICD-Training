@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         AWS_REGION = "us-east-1"
-        AWS_CREDS = credentials('Jenklins-Training-account')
+        AWS_CREDS = credentials('lin-id')
     }
 
     stages {
