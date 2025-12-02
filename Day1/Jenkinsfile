@@ -10,7 +10,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://gitlab.presidio.com/yjs/cicd-training.git'
+                git branch: 'main', url: 'https://github.com/Shamlin-Presidio/CICD-Training.git'
             }
         }
 
