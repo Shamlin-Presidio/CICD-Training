@@ -1,0 +1,47 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(
+            name: 'ENVIRONMENT',
+            defaultValue: 'dev',
+            description: 'Choose deployment environment: dev / test / prod'
+        )
+    }
+
+    stages {
+
+        stage('Print Environment') {
+            steps {
+                echo "Selected environment: ${params.ENVIRONMENT}"
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo "Building application for ${params.ENVIRONMENT}..."
+                sh "echo Build step executed"
+            }
+        }
+
+        stage('Test') {
+            steps {
+                echo "Running tests for ${params.ENVIRONMENT}..."
+                sh "echo Test step executed"
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo "Deploying to ${params.ENVIRONMENT} environment..."
+                sh "echo Deploy step executed"
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Pipeline completed successfully for ${params.ENVIRONMENT}"
+        }
+    }
+}
