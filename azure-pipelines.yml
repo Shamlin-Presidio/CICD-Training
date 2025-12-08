@@ -81,60 +81,118 @@ stages:
           displayName: "Publish Terraform plan artifact"
 
 # =================== CD STAGE ===================
+# - stage: CD
+#   displayName: "CD - Terraform Apply"
+#   dependsOn: CI
+#   condition: succeeded()
+#   environment:
+#     name: "prod"
+
+#   # Optional: tie to an Environment with approvals in DevOps UI
+#   # environment:
+#   #   name: "prod-env"
+
+#   jobs:
+#     - job: terraform_cd
+#       displayName: "Terraform Apply"
+#       pool:
+#         vmImage: 'ubuntu-latest'
+
+#       steps:
+#         - checkout: self
+
+#         # Download plan artifact from CI stage
+#         - download: current
+#           artifact: tfplan
+#           displayName: "Download Terraform plan artifact"
+
+#         # Install Terraform again (CD job is a fresh agent)
+#         - script: |
+#             echo "Installing Terraform..."
+#             curl -sLo terraform.zip https://releases.hashicorp.com/terraform/1.9.5/terraform_1.9.5_linux_amd64.zip
+#             sudo unzip -o terraform.zip -d /usr/local/bin
+#             terraform -version
+#           displayName: "Install Terraform"
+
+#         # Manual approval gate inside pipeline (in addition to environment approvals if you use them)
+#         - task: ManualValidation@0
+#           displayName: "Manual approval before apply"
+#           inputs:
+#             instructions: "Please review the Terraform plan and approve to apply changes."
+#             onTimeout: 'reject'
+#             timeout: '43200'  # 12 hours
+
+#         # Azure login and apply
+#         - task: AzureCLI@2
+#           displayName: "Terraform apply"
+#           inputs:
+#             azureSubscription: '$(azureServiceConnection)'
+#             scriptType: 'bash'
+#             scriptLocation: 'inlineScript'
+#             workingDirectory: 'infra'
+#             inlineScript: |
+#               set -e
+
+#               echo "Running terraform init (to restore providers/state)"
+#               terraform init
+
+#               echo "Applying previously generated plan..."
+#               terraform apply "tfplan"
+
+
+
+
+# =================== CD STAGE ===================
 - stage: CD
   displayName: "CD - Terraform Apply"
   dependsOn: CI
   condition: succeeded()
-  environment:
-    name: "prod"
-
-  # Optional: tie to an Environment with approvals in DevOps UI
-  # environment:
-  #   name: "prod-env"
 
   jobs:
-    - job: terraform_cd
-      displayName: "Terraform Apply"
-      pool:
-        vmImage: 'ubuntu-latest'
+    - deployment: terraform_cd       # <-- Deployment job (required for environments)
+      displayName: "Terraform Apply Deployment"
+      environment: "prod"            # <-- Approval gates will work here
+      strategy:
+        runOnce:
+          deploy:
+            steps:
 
-      steps:
-        - checkout: self
+              - checkout: self
 
-        # Download plan artifact from CI stage
-        - download: current
-          artifact: tfplan
-          displayName: "Download Terraform plan artifact"
+              # Download tfplan artifact
+              - download: current
+                artifact: tfplan
+                displayName: "Download Terraform plan artifact"
 
-        # Install Terraform again (CD job is a fresh agent)
-        - script: |
-            echo "Installing Terraform..."
-            curl -sLo terraform.zip https://releases.hashicorp.com/terraform/1.9.5/terraform_1.9.5_linux_amd64.zip
-            sudo unzip -o terraform.zip -d /usr/local/bin
-            terraform -version
-          displayName: "Install Terraform"
+              # Install Terraform
+              - script: |
+                  echo "Installing Terraform..."
+                  curl -sLo terraform.zip https://releases.hashicorp.com/terraform/1.9.5/terraform_1.9.5_linux_amd64.zip
+                  sudo unzip -o terraform.zip -d /usr/local/bin
+                  terraform -version
+                displayName: "Install Terraform"
 
-        # Manual approval gate inside pipeline (in addition to environment approvals if you use them)
-        - task: ManualValidation@0
-          displayName: "Manual approval before apply"
-          inputs:
-            instructions: "Please review the Terraform plan and approve to apply changes."
-            onTimeout: 'reject'
-            timeout: '43200'  # 12 hours
+              # Manual approval before apply  (VALID only in deployment job!)
+              - task: ManualValidation@0
+                displayName: "Manual approval before apply"
+                inputs:
+                  instructions: "Please review the Terraform plan and approve to apply changes."
+                  onTimeout: "reject"
+                  timeout: "43200" # 12 hours
 
-        # Azure login and apply
-        - task: AzureCLI@2
-          displayName: "Terraform apply"
-          inputs:
-            azureSubscription: '$(azureServiceConnection)'
-            scriptType: 'bash'
-            scriptLocation: 'inlineScript'
-            workingDirectory: 'infra'
-            inlineScript: |
-              set -e
+              # Terraform apply
+              - task: AzureCLI@2
+                displayName: "Terraform apply"
+                inputs:
+                  azureSubscription: '$(azureServiceConnection)'
+                  scriptType: 'bash'
+                  scriptLocation: 'inlineScript'
+                  workingDirectory: 'infra'
+                  inlineScript: |
+                    set -e
 
-              echo "Running terraform init (to restore providers/state)"
-              terraform init
+                    echo "Running terraform init..."
+                    terraform init
 
-              echo "Applying previously generated plan..."
-              terraform apply "tfplan"
+                    echo "Applying plan..."
+                    terraform apply "tfplan"
