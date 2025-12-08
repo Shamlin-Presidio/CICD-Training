@@ -25,7 +25,7 @@ stages:
     - job: terraform_ci
       displayName: "Terraform Init/Fmt/Validate/Plan"
       pool:
-        vmImage: 'Default'
+        name: 'Default'
 
       steps:
         - checkout: self
