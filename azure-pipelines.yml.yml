@@ -1,0 +1,138 @@
+trigger:
+  branches:
+    include:
+      - main
+      - dev
+
+variables:
+  environment: 'dev'
+  location: 'eastus'
+
+  resourceGroupName: 'shamlin-rg-$(environment)'
+  appServicePlanName: 'shamlin-asp-$(environment)'
+  appServiceName: 'shamlin-app-$(environment)'
+  appServiceSku: 'B1'
+
+  azureServiceConnection: 'Shamlin-Service-Connection'
+
+stages:
+
+# =================== CI ===================
+
+- stage: CI
+  displayName: "CI - Terraform Plan"
+  jobs:
+    - job: terraform_ci
+      displayName: "Terraform Init/Fmt/Validate/Plan"
+      pool:
+        vmImage: 'ubuntu-latest'
+
+      steps:
+        - checkout: self
+
+        # Install Terraform
+        - script: |
+            echo "Installing Terraform..."
+            curl -sLo terraform.zip https://releases.hashicorp.com/terraform/1.9.5/terraform_1.9.5_linux_amd64.zip
+            sudo unzip -o terraform.zip -d /usr/local/bin
+            terraform -version
+          displayName: "Install Terraform"
+
+        # Azure login and run Terraform commands
+        - task: AzureCLI@2
+          displayName: "Terraform init/fmt/validate/plan"
+          inputs:
+            azureSubscription: '$(azureServiceConnection)'
+            scriptType: 'bash'
+            scriptLocation: 'inlineScript'
+            workingDirectory: 'infra'
+            inlineScript: |
+              set -e
+
+              echo "Azure CLI logged in. Running Terraform in environment: $(environment)"
+
+              terraform init
+
+              echo "Running terraform fmt -check"
+              terraform fmt -check
+
+              echo "Running terraform validate with env-specific behavior..."
+              if [ "$(environment)" = "prod" ]; then
+                echo "Strict validation for PROD"
+                terraform validate
+              else
+                echo "Lenient validation for DEV/STAGE"
+                terraform validate || echo "Validation issues detected but allowed in non-prod"
+              fi
+
+              echo "Running terraform plan..."
+              terraform plan \
+                -out=tfplan \
+                -var="environment=$(environment)" \
+                -var="location=$(location)" \
+                -var="resource_group_name=$(resourceGroupName)" \
+                -var="app_service_plan_name=$(appServicePlanName)" \
+                -var="app_service_name=$(appServiceName)" \
+                -var="app_service_sku=$(appServiceSku)"
+
+        # Publish plan as artifact
+        - publish: infra/tfplan
+          artifact: tfplan
+          displayName: "Publish Terraform plan artifact"
+
+# =================== CD STAGE ===================
+- stage: CD
+  displayName: "CD - Terraform Apply"
+  dependsOn: CI
+  condition: succeeded()  # only run if CI succeeded
+
+  # Optional: tie to an Environment with approvals in DevOps UI
+  # environment:
+  #   name: "prod-env"
+
+  jobs:
+    - job: terraform_cd
+      displayName: "Terraform Apply"
+      pool:
+        vmImage: 'ubuntu-latest'
+
+      steps:
+        - checkout: self
+
+        # Download plan artifact from CI stage
+        - download: current
+          artifact: tfplan
+          displayName: "Download Terraform plan artifact"
+
+        # Install Terraform again (CD job is a fresh agent)
+        - script: |
+            echo "Installing Terraform..."
+            curl -sLo terraform.zip https://releases.hashicorp.com/terraform/1.9.5/terraform_1.9.5_linux_amd64.zip
+            sudo unzip -o terraform.zip -d /usr/local/bin
+            terraform -version
+          displayName: "Install Terraform"
+
+        # Manual approval gate inside pipeline (in addition to environment approvals if you use them)
+        - task: ManualValidation@0
+          displayName: "Manual approval before apply"
+          inputs:
+            instructions: "Please review the Terraform plan and approve to apply changes."
+            onTimeout: 'reject'
+            timeout: '43200'  # 12 hours
+
+        # Azure login and apply
+        - task: AzureCLI@2
+          displayName: "Terraform apply"
+          inputs:
+            azureSubscription: '$(azureServiceConnection)'
+            scriptType: 'bash'
+            scriptLocation: 'inlineScript'
+            workingDirectory: 'infra'
+            inlineScript: |
+              set -e
+
+              echo "Running terraform init (to restore providers/state)"
+              terraform init
+
+              echo "Applying previously generated plan..."
+              terraform apply "tfplan"
