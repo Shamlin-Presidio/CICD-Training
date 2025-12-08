@@ -1,5 +1,14 @@
 trigger: none   # Only triggered by release pipeline
 
+resources:
+  pipelines:
+    - pipeline: ci_pipeline
+      source: Ci        # name of your CI pipeline
+      trigger:
+        branches:
+          include:
+            - main
+
 variables:
   azureServiceConnection: 'Shamlinzure'
   appServiceName: 'shamlin-app-dev'
