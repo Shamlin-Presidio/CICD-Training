@@ -1,14 +1,60 @@
-trigger: none   # Only triggered by release pipeline
+# trigger: none   # Only triggered by release pipeline
+
+# resources:
+#   pipelines:
+#     - pipeline: ci_pipeline
+#       source: Ci        # name of your CI pipeline
+#       # trigger:
+#       #   branches:
+#       #     include:
+#       #       - main
+#       trigger: true
+
+# variables:
+#   azureServiceConnection: 'Shamlinzure'
+#   appServiceName: 'shamlin-app-dev'
+#   resourceGroupName: 'shamlin-rg-dev'
+
+# stages:
+# - stage: Deploy
+#   displayName: "Deploy to Azure App Service"
+#   jobs:
+#     - deployment: deployWeb
+#       displayName: "Deploy Node App"
+#       environment: "dev"       # Add approvals here
+#       pool:
+#         name: 'Default'
+
+#       strategy:
+#         runOnce:
+#           deploy: 
+#             steps:
+
+#             - checkout: none
+
+#             - task: DownloadPipelineArtifact@2
+#               inputs:
+#                 buildType: 'current'
+#                 artifact: drop
+#                 path: '$(Pipeline.Workspace)/drop'
+#               displayName: "Download app artifact"
+
+#             - task: AzureWebApp@1
+#               displayName: "Deploy to App Service"
+#               inputs:
+#                 azureSubscription: '$(azureServiceConnection)'
+#                 appName: '$(appServiceName)'
+#                 package: '$(Pipeline.Workspace)/drop/app.zip'
+
+
+
+trigger: none   # CD does NOT run by itself
 
 resources:
   pipelines:
     - pipeline: ci_pipeline
-      source: Ci        # name of your CI pipeline
-      # trigger:
-      #   branches:
-      #     include:
-      #       - main
-      trigger: true
+      source: Ci      # EXACT name as shown in Azure DevOps
+      trigger: true   # Trigger CD only when CI finishes
 
 variables:
   azureServiceConnection: 'Shamlinzure'
@@ -18,26 +64,31 @@ variables:
 stages:
 - stage: Deploy
   displayName: "Deploy to Azure App Service"
+
   jobs:
     - deployment: deployWeb
       displayName: "Deploy Node App"
-      environment: "dev"       # Add approvals here
+      environment: "dev"
       pool:
         name: 'Default'
 
       strategy:
         runOnce:
-          deploy: 
+          deploy:
             steps:
 
             - checkout: none
 
+            # ⭐ FIX: Always download latest CI artifact
             - task: DownloadPipelineArtifact@2
+              displayName: "Download app artifact"
               inputs:
-                buildType: 'current'
+                buildType: 'specific'
+                project: $(System.TeamProject)
+                pipeline: Ci
+                buildVersionToDownload: 'latest'
                 artifact: drop
                 path: '$(Pipeline.Workspace)/drop'
-              displayName: "Download app artifact"
 
             - task: AzureWebApp@1
               displayName: "Deploy to App Service"
