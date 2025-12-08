@@ -4,10 +4,11 @@ resources:
   pipelines:
     - pipeline: ci_pipeline
       source: Ci        # name of your CI pipeline
-      trigger:
-        branches:
-          include:
-            - main
+      # trigger:
+      #   branches:
+      #     include:
+      #       - main
+      trigger: true
 
 variables:
   azureServiceConnection: 'Shamlinzure'
@@ -33,6 +34,7 @@ stages:
 
             - task: DownloadPipelineArtifact@2
               inputs:
+                buildType: 'current'
                 artifact: drop
                 path: '$(Pipeline.Workspace)/drop'
               displayName: "Download app artifact"
