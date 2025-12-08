@@ -89,6 +89,8 @@ stages:
   # Optional: tie to an Environment with approvals in DevOps UI
   # environment:
   #   name: "prod-env"
+  environment:
+  name: "prod"
 
   jobs:
     - job: terraform_cd
