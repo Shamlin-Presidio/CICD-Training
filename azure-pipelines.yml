@@ -93,7 +93,9 @@ stages:
   jobs:
     - deployment: terraform_cd
       displayName: "Terraform Apply Deployment"
-      environment: "prod"      
+      environment: "prod"
+      pool:
+        name: 'Default'      
       strategy:
         runOnce:
           deploy:
