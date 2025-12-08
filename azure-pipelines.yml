@@ -95,7 +95,8 @@ stages:
       displayName: "Terraform Apply Deployment"
       environment: "prod"
       pool:
-        name: 'Default'      
+        name: 'Default'
+
       strategy:
         runOnce:
           deploy:
@@ -103,10 +104,19 @@ stages:
 
               - checkout: self
 
+              # Download the plan artifact
               - download: current
                 artifact: tfplan
                 displayName: "Download Terraform plan artifact"
 
+              # Move tfplan file into the working directory
+              - script: |
+                  echo "Moving tfplan file to Day5/infra..."
+                  cp "$(Pipeline.Workspace)/tfplan/tfplan" "Day5/infra/tfplan"
+                  ls -l Day5/infra
+                displayName: "Move tfplan file"
+
+              # Install Terraform
               - script: |
                   echo "Installing Terraform..."
                   curl -sLo terraform.zip https://releases.hashicorp.com/terraform/1.9.5/terraform_1.9.5_linux_amd64.zip
@@ -114,6 +124,7 @@ stages:
                   terraform -version
                 displayName: "Install Terraform"
 
+              # Terraform apply
               - task: AzureCLI@2
                 displayName: "Terraform apply"
                 inputs:
