@@ -1,0 +1,36 @@
+trigger: none   # Only triggered by release pipeline
+
+variables:
+  azureServiceConnection: 'Shamlinzure'
+  appServiceName: 'shamlin-app-dev'
+  resourceGroupName: 'shamlin-rg-dev'
+
+stages:
+- stage: Deploy
+  displayName: "Deploy to Azure App Service"
+  jobs:
+    - deployment: deployWeb
+      displayName: "Deploy Node App"
+      environment: "dev"       # Add approvals here
+      pool:
+        vmImage: ubuntu-latest
+
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+
+            - checkout: none
+
+            - task: DownloadPipelineArtifact@2
+              inputs:
+                artifact: drop
+                path: '$(Pipeline.Workspace)/drop'
+              displayName: "Download app artifact"
+
+            - task: AzureWebApp@1
+              displayName: "Deploy to App Service"
+              inputs:
+                azureSubscription: '$(azureServiceConnection)'
+                appName: '$(appServiceName)'
+                package: '$(Pipeline.Workspace)/drop/app.zip'
