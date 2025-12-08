@@ -45,7 +45,7 @@ stages:
             azureSubscription: '$(azureServiceConnection)'
             scriptType: 'bash'
             scriptLocation: 'inlineScript'
-            workingDirectory: 'infra'
+            workingDirectory: 'Day5/infra'
             inlineScript: |
               set -e
 
@@ -76,7 +76,7 @@ stages:
                 -var="app_service_sku=$(appServiceSku)"
 
         # Publish plan as artifact
-        - publish: infra/tfplan
+        - publish: Day5/infra/tfplan
           artifact: tfplan
           displayName: "Publish Terraform plan artifact"
 
@@ -118,7 +118,7 @@ stages:
                   azureSubscription: '$(azureServiceConnection)'
                   scriptType: 'bash'
                   scriptLocation: 'inlineScript'
-                  workingDirectory: 'infra'
+                  workingDirectory: 'Day5/infra'
                   inlineScript: |
                     set -e
 
