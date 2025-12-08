@@ -17,7 +17,7 @@ stages:
 
       strategy:
         runOnce:
-          deploy:
+          deploy: 
             steps:
 
             - checkout: none
