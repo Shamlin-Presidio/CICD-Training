@@ -13,7 +13,7 @@ variables:
   appServiceName: 'shamlin-app-$(environment)'
   appServiceSku: 'B1'
 
-  azureServiceConnection: 'Shamlin-Service-Connection'
+  azureServiceConnection: 'Shamlin-Presidio'
 
 stages:
 
