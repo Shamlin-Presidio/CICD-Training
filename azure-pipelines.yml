@@ -84,13 +84,13 @@ stages:
 - stage: CD
   displayName: "CD - Terraform Apply"
   dependsOn: CI
-  condition: succeeded()  # only run if CI succeeded
+  condition: succeeded()
+  environment:
+    name: "prod"
 
   # Optional: tie to an Environment with approvals in DevOps UI
   # environment:
   #   name: "prod-env"
-  environment:
-  name: "prod"
 
   jobs:
     - job: terraform_cd
